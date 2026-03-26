@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>去旅行 - 记录每一次出发</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #00b4d8;
+      --primary-dark: #0077b6;
+      --accent: #f77f00;
+      --accent-light: #ffb347;
+      --bg: #f0f8ff;
+      --white: #ffffff;
+      --text: #1a1a2e;
+      --text-light: #555;
+      --card-bg: #ffffff;
+      --shadow: 0 8px 32px rgba(0,119,182,0.10);
+      --radius: 18px;
+      --transition: 0.3s cubic-bezier(.4,0,.2,1);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Noto Sans SC', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+
+    /* ===== NAV ===== */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 5vw; height: 68px;
+      background: rgba(255,255,255,0.82);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 2px 16px rgba(0,119,182,0.08);
+      transition: background var(--transition);
+    }
+    .nav-logo {
+      font-size: 1.6rem; font-weight: 900; letter-spacing: -1px;
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary), var(--accent));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      text-decoration: none;
+    }
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a {
+      text-decoration: none; color: var(--text-light); font-size: 0.95rem; font-weight: 500;
+      transition: color var(--transition); position: relative; padding-bottom: 4px;
+    }
+    .nav-links a::after {
+      content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 2px;
+      background: var(--primary); transition: width var(--transition);
+    }
+    .nav-links a:hover { color: var(--primary-dark); }
+    .nav-links a:hover::after { width: 100%; }
+    .nav-actions { display: flex; gap: 0.8rem; }
+    .btn-outline {
+      padding: 8px 20px; border: 2px solid var(--primary); color: var(--primary);
+      background: transparent; border-radius: 50px; font-size: 0.88rem; font-weight: 600;
+      cursor: pointer; transition: all var(--transition); text-decoration: none; display: inline-block;
+    }
+    .btn-outline:hover { background: var(--primary); color: white; }
+    .btn-solid {
+      padding: 8px 20px; background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white; border: none; border-radius: 50px; font-size: 0.88rem; font-weight: 600;
+      cursor: pointer; transition: all var(--transition); text-decoration: none; display: inline-block;
+      box-shadow: 0 4px 15px rgba(0,180,216,0.4);
+    }
+    .btn-solid:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,180,216,0.5); }
+
+    /* ===== HERO ===== */
+    .hero {
+      min-height: 100vh; position: relative; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hero-bg {
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, #0077b6 0%, #00b4d8 40%, #48cae4 70%, #90e0ef 100%);
+    }
+    .hero-bg::before {
+      content: ''; position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 800'%3E%3Cdefs%3E%3ClinearGradient id='g1' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23ffffff' stop-opacity='0.08'/%3E%3Cstop offset='100%25' stop-color='%23ffffff' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cellipse cx='200' cy='150' rx='400' ry='300' fill='url(%23g1)'/%3E%3Cellipse cx='1300' cy='600' rx='500' ry='350' fill='url(%23g1)'/%3E%3C/svg%3E") no-repeat center/cover;
+    }
+    /* floating circles */
+    .hero-bubbles { position: absolute; inset: 0; overflow: hidden; }
+    .bubble {
+      position: absolute; border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      animation: floatUp linear infinite;
+    }
+    .bubble:nth-child(1) { width:80px; height:80px; left:10%; animation-duration:12s; animation-delay:0s; }
+    .bubble:nth-child(2) { width:120px; height:120px; left:25%; animation-duration:18s; animation-delay:3s; }
+    .bubble:nth-child(3) { width:50px; height:50px; left:50%; animation-duration:10s; animation-delay:1s; }
+    .bubble:nth-child(4) { width:160px; height:160px; left:70%; animation-duration:20s; animation-delay:5s; }
+    .bubble:nth-child(5) { width:60px; height:60px; left:85%; animation-duration:14s; animation-delay:2s; }
+    @keyframes floatUp {
+      0% { transform: translateY(110vh) scale(0.8); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 0.6; }
+      100% { transform: translateY(-20vh) scale(1.1); opacity: 0; }
+    }
+    .hero-content {
+      position: relative; z-index: 2; text-align: center; padding: 0 2rem;
+      max-width: 800px;
+    }
+    .hero-badge {
+      display: inline-block; padding: 6px 18px;
+      background: rgba(255,255,255,0.2); backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.3); border-radius: 50px;
+      color: white; font-size: 0.82rem; font-weight: 500; letter-spacing: 2px;
+      margin-bottom: 1.5rem; text-transform: uppercase;
+    }
+    .hero-title {
+      font-size: clamp(3rem, 8vw, 6rem); font-weight: 900; color: white;
+      line-height: 1.1; text-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      margin-bottom: 1rem;
+    }
+    .hero-title span { color: var(--accent-light); }
+    .hero-subtitle {
+      font-size: clamp(1rem, 2.5vw, 1.3rem); color: rgba(255,255,255,0.88);
+      font-weight: 300; line-height: 1.7; margin-bottom: 2.5rem;
+    }
+    .hero-cta { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn-hero-primary {
+      padding: 16px 40px; background: white; color: var(--primary-dark);
+      border: none; border-radius: 50px; font-size: 1rem; font-weight: 700;
+      cursor: pointer; transition: all var(--transition);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2); text-decoration: none; display: inline-block;
+    }
+    .btn-hero-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+    .btn-hero-secondary {
+      padding: 16px 40px; background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(8px); color: white;
+      border: 2px solid rgba(255,255,255,0.5); border-radius: 50px;
+      font-size: 1rem; font-weight: 600; cursor: pointer; transition: all var(--transition);
+      text-decoration: none; display: inline-block;
+    }
+    .btn-hero-secondary:hover { background: rgba(255,255,255,0.25); transform: translateY(-3px); }
+    .hero-stats {
+      position: absolute; bottom: 3rem; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 3rem; z-index: 2;
+    }
+    .stat-item { text-align: center; color: white; }
+    .stat-num { font-size: 1.8rem; font-weight: 900; display: block; }
+    .stat-label { font-size: 0.78rem; opacity: 0.8; letter-spacing: 1px; }
+    .scroll-hint {
+      position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%);
+      color: rgba(255,255,255,0.7); font-size: 0.78rem; z-index: 2;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .scroll-hint .arrow { animation: bounce 2s infinite; }
+    @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
+
+    /* ===== SECTION COMMON ===== */
+    section { padding: 90px 5vw; }
+    .section-header { text-align: center; margin-bottom: 3.5rem; }
+    .section-tag {
+      display: inline-block; padding: 4px 16px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white; border-radius: 50px; font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 2px; text-transform: uppercase; margin-bottom: 1rem;
+    }
+    .section-title { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 900; color: var(--text); line-height: 1.2; }
+    .section-subtitle { font-size: 1rem; color: var(--text-light); margin-top: 0.8rem; line-height: 1.7; }
+
+    /* ===== DIARY / 攻略 CARDS ===== */
+    .diary-section { background: white; }
+    .tab-bar {
+      display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 2.5rem;
+      background: var(--bg); padding: 6px; border-radius: 50px;
+      width: fit-content; margin-left: auto; margin-right: auto;
+    }
+    .tab-btn {
+      padding: 10px 28px; border: none; border-radius: 50px; font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; transition: all var(--transition); background: transparent; color: var(--text-light);
+    }
+    .tab-btn.active {
+      background: white; color: var(--primary-dark);
+      box-shadow: 0 4px 15px rgba(0,119,182,0.15);
+    }
+    .cards-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.8rem;
+    }
+    .diary-card {
+      background: var(--card-bg); border-radius: var(--radius); overflow: hidden;
+      box-shadow: var(--shadow); transition: all var(--transition); cursor: pointer;
+    }
+    .diary-card:hover { transform: translateY(-8px); box-shadow: 0 20px 50px rgba(0,119,182,0.18); }
+    .card-img {
+      width: 100%; height: 200px; object-fit: cover;
+      background: linear-gradient(135deg, #48cae4, #0077b6);
+      position: relative; overflow: hidden;
+    }
+    .card-img-placeholder {
+      width: 100%; height: 200px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 4rem; position: relative;
+    }
+    .card-img-placeholder::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, var(--c1, #48cae4), var(--c2, #0077b6));
+    }
+    .card-img-placeholder span { position: relative; z-index: 1; }
+    .card-tag {
+      position: absolute; top: 14px; left: 14px; z-index: 2;
+      padding: 4px 12px; background: var(--accent); color: white;
+      border-radius: 50px; font-size: 0.72rem; font-weight: 700;
+    }
+    .card-body { padding: 1.2rem 1.4rem 1.4rem; }
+    .card-meta { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .card-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+    }
+    .card-author { font-size: 0.82rem; color: var(--text-light); }
+    .card-date { font-size: 0.78rem; color: #aaa; margin-left: auto; }
+    .card-title { font-size: 1.05rem; font-weight: 700; color: var(--text); margin-bottom: 0.5rem; line-height: 1.4; }
+    .card-desc { font-size: 0.85rem; color: var(--text-light); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .card-footer { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid #f0f0f0; }
+    .card-stat { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: #999; }
+    .card-stat svg { width: 14px; height: 14px; }
+    .card-location { margin-left: auto; font-size: 0.78rem; color: var(--primary); font-weight: 500; }
+
+    /* ===== DESTINATIONS ===== */
+    .dest-section { background: var(--bg); }
+    .dest-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      grid-template-rows: 260px 260px;
+      gap: 1.2rem; border-radius: var(--radius); overflow: hidden;
+    }
+    .dest-card {
+      position: relative; overflow: hidden; cursor: pointer;
+      border-radius: calc(var(--radius) - 4px);
+    }
+    .dest-card:first-child { grid-row: span 2; }
+    .dest-bg {
+      width: 100%; height: 100%;
+      background: linear-gradient(135deg, var(--c1, #0077b6), var(--c2, #48cae4));
+      transition: transform 0.5s ease;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 5rem;
+    }
+    .dest-card:hover .dest-bg { transform: scale(1.08); }
+    .dest-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%);
+    }
+    .dest-info {
+      position: absolute; bottom: 0; left: 0; right: 0; padding: 1.5rem;
+      color: white;
+    }
+    .dest-name { font-size: 1.4rem; font-weight: 800; }
+    .dest-count { font-size: 0.82rem; opacity: 0.8; margin-top: 4px; }
+    .dest-card:first-child .dest-name { font-size: 2rem; }
+
+    /* ===== COMMUNITY / 交友 ===== */
+    .community-section { background: white; }
+    .friend-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.5rem; }
+    .friend-card {
+      background: var(--bg); border-radius: var(--radius); padding: 1.8rem;
+      text-align: center; transition: all var(--transition); cursor: pointer;
+      border: 2px solid transparent;
+    }
+    .friend-card:hover { border-color: var(--primary); background: white; transform: translateY(-5px); box-shadow: var(--shadow); }
+    .friend-avatar {
+      width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 1rem;
+      background: linear-gradient(135deg, var(--c1, #0077b6), var(--c2, #48cae4));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; position: relative;
+    }
+    .friend-badge {
+      position: absolute; bottom: 0; right: 0;
+      width: 20px; height: 20px; background: #4caf50; border-radius: 50%;
+      border: 2px solid white;
+    }
+    .friend-name { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .friend-bio { font-size: 0.82rem; color: var(--text-light); line-height: 1.5; margin-bottom: 1rem; }
+    .friend-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center; margin-bottom: 1rem; }
+    .tag {
+      padding: 3px 10px; background: rgba(0,180,216,0.1); color: var(--primary-dark);
+      border-radius: 50px; font-size: 0.72rem; font-weight: 500;
+    }
+    .btn-follow {
+      padding: 8px 24px; border: 2px solid var(--primary); color: var(--primary);
+      background: transparent; border-radius: 50px; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: all var(--transition);
+    }
+    .btn-follow:hover, .btn-follow.following { background: var(--primary); color: white; }
+
+    /* ===== MODAL (登录/注册) ===== */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(8px); z-index: 2000;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity var(--transition);
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: all; }
+    .modal {
+      background: white; border-radius: 24px; padding: 2.5rem;
+      width: 100%; max-width: 440px; margin: 1rem;
+      transform: translateY(30px) scale(0.95);
+      transition: transform var(--transition);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.2);
+    }
+    .modal-overlay.active .modal { transform: translateY(0) scale(1); }
+    .modal-header { text-align: center; margin-bottom: 2rem; }
+    .modal-logo { font-size: 1.8rem; font-weight: 900;
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary), var(--accent));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem;
+    }
+    .modal-title { font-size: 1.4rem; font-weight: 700; }
+    .modal-sub { font-size: 0.85rem; color: var(--text-light); margin-top: 0.3rem; }
+    .modal-tabs { display: flex; gap: 0; margin-bottom: 1.8rem; border-bottom: 2px solid #f0f0f0; }
+    .modal-tab {
+      flex: 1; text-align: center; padding: 0.8rem; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; color: var(--text-light); transition: all var(--transition);
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+    }
+    .modal-tab.active { color: var(--primary-dark); border-bottom-color: var(--primary); }
+    .form-group { margin-bottom: 1.2rem; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
+    .form-input {
+      width: 100%; padding: 12px 16px; border: 2px solid #e8e8e8; border-radius: 12px;
+      font-size: 0.95rem; font-family: inherit; transition: border-color var(--transition);
+      outline: none; color: var(--text);
+    }
+    .form-input:focus { border-color: var(--primary); }
+    .form-row { display: flex; gap: 0.8rem; }
+    .btn-submit {
+      width: 100%; padding: 14px; background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700;
+      cursor: pointer; transition: all var(--transition);
+      box-shadow: 0 4px 15px rgba(0,180,216,0.4); margin-top: 0.5rem;
+    }
+    .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,180,216,0.5); }
+    .modal-divider { display: flex; align-items: center; gap: 1rem; margin: 1.2rem 0; color: #ccc; font-size: 0.82rem; }
+    .modal-divider::before, .modal-divider::after { content: ''; flex: 1; height: 1px; background: #eee; }
+    .social-btns { display: flex; gap: 0.8rem; }
+    .btn-social {
+      flex: 1; padding: 10px; border: 2px solid #eee; border-radius: 10px; background: white;
+      cursor: pointer; font-size: 1.2rem; transition: all var(--transition);
+    }
+    .btn-social:hover { border-color: var(--primary); background: var(--bg); }
+    .modal-close {
+      position: absolute; top: 1.2rem; right: 1.5rem;
+      background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #999;
+      transition: color var(--transition);
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal { position: relative; }
+
+    /* ===== FOOTER ===== */
+    footer {
+      background: var(--text); color: rgba(255,255,255,0.7);
+      padding: 60px 5vw 30px;
+    }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; margin-bottom: 3rem; }
+    .footer-brand .logo {
+      font-size: 1.6rem; font-weight: 900; color: white; margin-bottom: 1rem; display: block;
+    }
+    .footer-desc { font-size: 0.88rem; line-height: 1.7; }
+    .footer-col h4 { color: white; font-size: 0.95rem; font-weight: 700; margin-bottom: 1rem; }
+    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+    .footer-col a { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.88rem; transition: color var(--transition); }
+    .footer-col a:hover { color: var(--primary); }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: gap; font-size: 0.82rem; }
+    .footer-social { display: flex; gap: 0.8rem; }
+    .social-icon {
+      width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.1);
+      display: flex; align-items: center; justify-content: center; font-size: 1rem;
+      transition: background var(--transition); cursor: pointer; text-decoration: none; color: white;
+    }
+    .social-icon:hover { background: var(--primary); }
+
+    /* ===== WRITE POST BTN ===== */
+    .fab {
+      position: fixed; bottom: 2rem; right: 2rem; z-index: 500;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      border: none; cursor: pointer; font-size: 1.5rem; color: white;
+      box-shadow: 0 8px 25px rgba(247,127,0,0.4);
+      transition: all var(--transition);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .fab:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 12px 35px rgba(247,127,0,0.5); }
+
+    /* ===== SEARCH BAR ===== */
+    .search-wrap {
+      max-width: 600px; margin: 0 auto 3rem;
+      position: relative;
+    }
+    .search-input {
+      width: 100%; padding: 14px 56px 14px 24px;
+      border: 2px solid #e8e8e8; border-radius: 50px;
+      font-size: 0.95rem; font-family: inherit; outline: none;
+      transition: border-color var(--transition); background: white;
+    }
+    .search-input:focus { border-color: var(--primary); }
+    .search-btn {
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+      width: 42px; height: 42px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border: none; cursor: pointer; color: white; font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ===== TOAST ===== */
+    .toast {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px);
+      background: var(--text); color: white; padding: 12px 24px; border-radius: 50px;
+      font-size: 0.88rem; z-index: 3000; transition: transform 0.4s cubic-bezier(.4,0,.2,1);
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      .nav-links { display: none; }
+      .dest-grid { grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
+      .dest-card:first-child { grid-row: span 1; grid-column: span 2; }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+      .hero-stats { gap: 1.5rem; }
+    }
+    @media (max-width: 600px) {
+      nav { padding: 0 1.2rem; }
+      .hero-stats { display: none; }
+      .dest-grid { grid-template-columns: 1fr; }
+      .dest-card:first-child { grid-column: span 1; }
+      .footer-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+      section { padding: 60px 1.2rem; }
+    }
+
+    /* ===== ANIMATIONS ===== */
+    .fade-in { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">✈ 去旅行</a>
+  <ul class="nav-links">
+    <li><a href="#diary">旅行日记</a></li>
+    <li><a href="#guide">旅游攻略</a></li>
+    <li><a href="#destinations">热门目的地</a></li>
+    <li><a href="#community">旅友社区</a></li>
+  </ul>
+  <div class="nav-actions">
+    <button class="btn-outline" onclick="openModal('login')">登录</button>
+    <button class="btn-solid" onclick="openModal('register')">免费注册</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-bubbles">
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-badge">✦ 旅行者的精神家园</div>
+    <h1 class="hero-title">世界那么大<br/><span>去旅行</span>看看</h1>
+    <p class="hero-subtitle">
+      记录每一次出发，分享每一段见闻<br/>
+      在这里遇见同行的旅友，发现下一个目的地
+    </p>
+    <div class="hero-cta">
+      <a href="#diary" class="btn-hero-primary">🗺 探索游记</a>
+      <button class="btn-hero-secondary" onclick="openModal('register')">✦ 加入社区</button>
+    </div>
+  </div>
+  <div class="hero-stats">
+    <div class="stat-item">
+      <span class="stat-num">128K+</span>
+      <span class="stat-label">旅行者</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">56K+</span>
+      <span class="stat-label">游记攻略</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">380+</span>
+      <span class="stat-label">目的地</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">4.9⭐</span>
+      <span class="stat-label">用户评分</span>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <span>向下探索</span>
+    <span class="arrow">↓</span>
+  </div>
+</section>
+
+<!-- DIARY & GUIDE -->
+<section id="diary" class="diary-section">
+  <div class="section-header fade-in">
+    <div class="section-tag">TRAVEL STORIES</div>
+    <h2 class="section-title">旅行日记 & 攻略</h2>
+    <p class="section-subtitle">来自真实旅行者的第一手见闻与干货攻略</p>
+  </div>
+
+  <div class="tab-bar fade-in">
+    <button class="tab-btn active" onclick="switchTab(this,'diary')">📔 旅行日记</button>
+    <button class="tab-btn" onclick="switchTab(this,'guide')">📋 旅游攻略</button>
+    <button class="tab-btn" onclick="switchTab(this,'photo')">📸 美图集</button>
+  </div>
+
+  <div class="search-wrap fade-in">
+    <input class="search-input" placeholder="搜索目的地、游记、攻略…" />
+    <button class="search-btn">🔍</button>
+  </div>
+
+  <div class="cards-grid" id="cardsGrid">
+    <!-- Card 1 -->
+    <div class="diary-card fade-in" onclick="showToast('正在打开文章…')">
+      <div class="card-img-placeholder" style="--c1:#f77f00;--c2:#ffb347">
+        <span>🌸</span>
+        <div class="card-tag">日记</div>
+      </div>
+      <div class="card-body">
+        <div class="card-meta">
+          <div class="card-avatar" style="background:linear-gradient(135deg,#f77f00,#ffb347)">小</div>
+          <span class="card-author">小橘子爱旅行</span>
+          <span class="card-date">3月20日</span>
+        </div>
+        <div class="card-title">京都樱花季｜最美的七天，我全记录下来了</div>
+        <div class="card-desc">三月底的京都，樱花开得正盛，岚山小道上飘着粉色的花瓣，像是误入了一场梦境……</div>
+        <div class="card-footer">
+          <span class="card-stat">❤️ 2.3k</span>
+          <span class="card-stat">💬 148</span>
+          <span class="card-stat">🔖 892</span>
+          <span class="card-location">📍 日本·京都</span>
+        </div>
+      </div>
+    </div>
+    <!-- Card 2 -->
+    <div class="diary-card fade-in" onclick="showToast('正在打开文章…')">
+      <div class="card-img-placeholder" style="--c1:#0077b6;--c2:#00b4d8">
+        <span>🏔️</span>
+        <div class="card-tag">攻略</div>
+      </div>
+      <div class="card-body">
+        <div class="card-meta">
+          <div class="card-avatar" style="background:linear-gradient(135deg,#0077b6,#00b4d8)">山</div>
+          <span class="card-author">山野背包客</span>
+          <span class="card-date">3月18日</span>
+        </div>
+        <div class="card-title">西藏自驾10天全攻略｜从成都出发的完整路书</div>
+        <div class="card-desc">整理了一份超详细的西藏自驾攻略，包含路况、补给点、住宿、高反应对等全部干货…</div>
+        <div class="card-footer">
+          <span class="card-stat">❤️ 5.8k</span>
+          <span class="card-stat">💬 367</span>
+          <span class="card-stat">🔖 2.1k</span>
+          <span class="card-location">📍 西藏</span>
+        </div>
+      </div>
+    </div>
+    <!-- Card 3 -->
+    <div class="diary-card fade-in" onclick="showToast('正在打开文章…')">
+      <div class="card-img-placeholder" style="--c1:#1b4332;--c2:#52b788">
+        <span>🌊</span>
+        <div class="card-tag">日记</div>
+      </div>
+      <div class="card-body">
+        <div class="card-meta">
+          <div class="card-avatar" style="background:linear-gradient(135deg,#1b4332,#52b788)">海</div>
+          <span class="card-author">海边的风</span>
+          <span class="card-date">3月15日</span>
+        </div>
+        <div class="card-title">三亚小众秘境｜当地人才知道的五个海滩</div>
+        <div class="card-desc">不是大东海、亚龙湾那种游客扎堆的地方，这五个地方清澈见底，人却少得可怜……</div>
+        <div class="card-footer">
+          <span class="card-stat">❤️ 1.9k</span>
+          <span class="card-stat">💬 93</span>
+          <span class="card-stat">🔖 756</span>
+          <span class="card-location">📍 海南·三亚</span>
+        </div>
+      </div>
+    </div>
+    <!-- Card 4 -->
+    <div class="diary-card fade-in" onclick="showToast('正在打开文章…')">
+      <div class="card-img-placeholder" style="--c1:#6a0572;--c2:#c77dff">
+        <span>🏙️</span>
+        <div class="card-tag">攻略</div>
+      </div>
+      <div class="card-body">
+        <div class="card-meta">
+          <div class="card-avatar" style="background:linear-gradient(135deg,#6a0572,#c77dff)">都</div>
+          <span class="card-author">都市漫游者</span>
+          <span class="card-date">3月12日</span>
+        </div>
+        <div class="card-title">上海48小时深度游｜最完整的周末游攻略</div>
+        <div class="card-desc">外滩、新天地、田子坊、安福路……怎样把上海玩得不走马观花？这份攻略告诉你…</div>
+        <div class="card-footer">
+          <span class="card-stat">❤️ 3.4k</span>
+          <span class="card-stat">💬 214</span>
+          <span class="card-stat">🔖 1.3k</span>
+          <span class="card-location">📍 上海</span>
+        </div>
+      </div>
+    </div>
+    <!-- Card 5 -->
+    <div class="diary-card fade-in" onclick="showToast('正在打开文章…')">
+      <div class="card-img-placeholder" style="--c1:#e63946;--c2:#ff6b6b">
+        <span>🗼</span>
+        <div class="card-tag">日记</div>
+      </div>
+      <div class="card-body">
+        <div class="card-meta">
+          <div class="card-avatar" style="background:linear-gradient(135deg,#e63946,#ff6b6b)">巴</div>
+          <span class="card-author">巴黎的浪漫</span>
+          <span class="card-date">3月08日</span>
+        </div>
+        <div class="card-title">一个人去巴黎｜关于孤独与美好的旅行日记</div>
+        <div class="card-desc">第一次独自出国，语言不通、地图不熟，却在塞纳河边的咖啡馆遇见了意想不到的温暖……</div>
+        <div class="card-footer">
+          <span class="card-stat">❤️ 7.2k</span>
+          <span class="card-stat">💬 489</span>
+          <span class="card-stat">🔖 3.1k</span>
+          <span class="card-location">📍 法国·巴黎</span>
+        </div>
+      </div>
+    </div>
+    <!-- Card 6 -->
+    <div class="diary-card fade-in" onclick="showToast('正在打开文章…')">
+      <div class="card-img-placeholder" style="--c1:#2d6a4f;--c2:#74c69d">
+        <span>🏕️</span>
+        <div class="card-tag">攻略</div>
+      </div>
+      <div class="card-body">
+        <div class="card-meta">
+          <div class="card-avatar" style="background:linear-gradient(135deg,#2d6a4f,#74c69d)">露</div>
+          <span class="card-author">露营达人</span>
+          <span class="card-date">3月05日</span>
+        </div>
+        <div class="card-title">新手露营装备清单｜花2000块搞定全套</div>
+        <div class="card-desc">不需要买最贵的，只需要买对的。整理了一份新手友好、性价比超高的露营装备清单……</div>
+        <div class="card-footer">
+          <span class="card-stat">❤️ 4.1k</span>
+          <span class="card-stat">💬 276</span>
+          <span class="card-stat">🔖 1.8k</span>
+          <span class="card-location">📍 全国通用</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:3rem" class="fade-in">
+    <button class="btn-outline" style="padding:14px 40px;font-size:1rem" onclick="showToast('加载更多内容…')">
+      查看更多游记 →
+    </button>
+  </div>
+</section>
+
+<!-- DESTINATIONS -->
+<section id="destinations" class="dest-section">
+  <div class="section-header fade-in">
+    <div class="section-tag">HOT DESTINATIONS</div>
+    <h2 class="section-title">热门目的地</h2>
+    <p class="section-subtitle">旅友们最爱去的地方，总有一个是你的梦想</p>
+  </div>
+  <div class="dest-grid fade-in">
+    <div class="dest-card" onclick="showToast('探索西藏…')">
+      <div class="dest-bg" style="--c1:#1a237e;--c2:#7c4dff">🏔️</div>
+      <div class="dest-overlay"></div>
+      <div class="dest-info">
+        <div class="dest-name">西藏</div>
+        <div class="dest-count">3,820 篇游记 · 徒步 / 自驾 / 人文</div>
+      </div>
+    </div>
+    <div class="dest-card" onclick="showToast('探索日本…')">
+      <div class="dest-bg" style="--c1:#c62828;--c2:#ef9a9a">🌸</div>
+      <div class="dest-overlay"></div>
+      <div class="dest-info">
+        <div class="dest-name">日本</div>
+        <div class="dest-count">5,641 篇游记</div>
+      </div>
+    </div>
+    <div class="dest-card" onclick="showToast('探索云南…')">
+      <div class="dest-bg" style="--c1:#1b5e20;--c2:#66bb6a">🌿</div>
+      <div class="dest-overlay"></div>
+      <div class="dest-info">
+        <div class="dest-name">云南</div>
+        <div class="dest-count">4,218 篇游记</div>
+      </div>
+    </div>
+    <div class="dest-card" onclick="showToast('探索三亚…')">
+      <div class="dest-bg" style="--c1:#006064;--c2:#26c6da">🌊</div>
+      <div class="dest-overlay"></div>
+      <div class="dest-info">
+        <div class="dest-name">三亚</div>
+        <div class="dest-count">2,934 篇游记</div>
+      </div>
+    </div>
+    <div class="dest-card" onclick="showToast('探索欧洲…')">
+      <div class="dest-bg" style="--c1:#e65100;--c2:#ffb74d">🏰</div>
+      <div class="dest-overlay"></div>
+      <div class="dest-info">
+        <div class="dest-name">欧洲</div>
+        <div class="dest-count">7,102 篇游记</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMMUNITY 交友 -->
+<section id="community" class="community-section">
+  <div class="section-header fade-in">
+    <div class="section-tag">TRAVEL FRIENDS</div>
+    <h2 class="section-title">找到你的旅友</h2>
+    <p class="section-subtitle">志同道合的旅行者在这里等你，一起出发吧</p>
+  </div>
+  <div class="friend-grid">
+    <div class="friend-card fade-in">
+      <div class="friend-avatar" style="--c1:#f77f00;--c2:#ffb347">
+        🌞
+        <div class="friend-badge"></div>
+      </div>
+      <div class="friend-name">旅途中的晴天</div>
+      <div class="friend-bio">热爱自由行，走过23个国家，下一站：冰岛极光 ✨</div>
+      <div class="friend-tags">
+        <span class="tag">背包客</span>
+        <span class="tag">极光</span>
+        <span class="tag">摄影</span>
+      </div>
+      <button class="btn-follow" onclick="toggleFollow(this)">+ 关注</button>
+    </div>
+    <div class="friend-card fade-in">
+      <div class="friend-avatar" style="--c1:#0077b6;--c2:#00b4d8">
+        🎒
+        <div class="friend-badge"></div>
+      </div>
+      <div class="friend-name">山野客阿峰</div>
+      <div class="friend-bio">徒步爱好者，长线穿越专家，川藏线骑行3次</div>
+      <div class="friend-tags">
+        <span class="tag">徒步</span>
+        <span class="tag">西藏</span>
+        <span class="tag">骑行</span>
+      </div>
+      <button class="btn-follow" onclick="toggleFollow(this)">+ 关注</button>
+    </div>
+    <div class="friend-card fade-in">
+      <div class="friend-avatar" style="--c1:#6a0572;--c2:#c77dff">
+        📸
+        <div class="friend-badge"></div>
+      </div>
+      <div class="friend-name">旅行摄影师Mia</div>
+      <div class="friend-bio">用镜头记录世界，每张照片都是一个故事</div>
+      <div class="friend-tags">
+        <span class="tag">摄影</span>
+        <span class="tag">人文</span>
+        <span class="tag">欧洲</span>
+      </div>
+      <button class="btn-follow" onclick="toggleFollow(this)">+ 关注</button>
+    </div>
+    <div class="friend-card fade-in">
+      <div class="friend-avatar" style="--c1:#1b4332;--c2:#52b788">
+        🍜
+        <div class="friend-badge"></div>
+      </div>
+      <div class="friend-name">美食旅行家</div>
+      <div class="friend-bio">旅行就是一场吃吃吃的旅程，美食才是最好的文化</div>
+      <div class="friend-tags">
+        <span class="tag">美食</span>
+        <span class="tag">东南亚</span>
+        <span class="tag">日本</span>
+      </div>
+      <button class="btn-follow" onclick="toggleFollow(this)">+ 关注</button>
+    </div>
+  </div>
+
+  <!-- 招募横幅 -->
+  <div class="fade-in" style="
+    margin-top: 3rem; padding: 3rem; border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary), #48cae4);
+    text-align: center; color: white;
+  ">
+    <div style="font-size:2.5rem;margin-bottom:1rem">🌍</div>
+    <h3 style="font-size:1.6rem;font-weight:900;margin-bottom:0.8rem">发现下一个旅行伙伴</h3>
+    <p style="opacity:0.88;margin-bottom:1.8rem;font-size:0.95rem">已有 <strong>128,000+</strong> 位旅行者在这里相遇，你也来吧！</p>
+    <button class="btn-hero-primary" onclick="openModal('register')">免费加入社区</button>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <span class="logo">✈ 去旅行</span>
+      <p class="footer-desc">
+        「去旅行」是旅行爱好者的精神聚集地。<br/>
+        记录见闻，分享攻略，结识旅友，一起走遍世界的每一个角落。
+      </p>
+      <div class="footer-social" style="margin-top:1.2rem">
+        <a class="social-icon" href="#" title="微博">微</a>
+        <a class="social-icon" href="#" title="微信">信</a>
+        <a class="social-icon" href="#" title="小红书">红</a>
+        <a class="social-icon" href="#" title="抖音">音</a>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h4>探索</h4>
+      <ul>
+        <li><a href="#">旅行日记</a></li>
+        <li><a href="#">旅游攻略</a></li>
+        <li><a href="#">热门目的地</a></li>
+        <li><a href="#">美图集</a></li>
+        <li><a href="#">旅行清单</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>社区</h4>
+      <ul>
+        <li><a href="#">找旅友</a></li>
+        <li><a href="#">拼团出发</a></li>
+        <li><a href="#">旅行话题</a></li>
+        <li><a href="#">发布游记</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>关于</h4>
+      <ul>
+        <li><a href="#">关于我们</a></li>
+        <li><a href="#">使用条款</a></li>
+        <li><a href="#">隐私政策</a></li>
+        <li><a href="#">联系我们</a></li>
+        <li><a href="#">加入我们</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 去旅行 · 版权所有</span>
+    <span>ICP备XXXXXXXX号</span>
+  </div>
+</footer>
+
+<!-- FAB 发布按钮 -->
+<button class="fab" onclick="openModal('register')" title="发布游记">✏️</button>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- MODAL 登录/注册 -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOnBg(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-header">
+      <div class="modal-logo">✈ 去旅行</div>
+      <div class="modal-title" id="modalTitle">欢迎回来</div>
+      <div class="modal-sub" id="modalSub">登录后探索更多旅行内容</div>
+    </div>
+    <div class="modal-tabs">
+      <div class="modal-tab active" id="tabLogin" onclick="switchModal('login')">登录</div>
+      <div class="modal-tab" id="tabRegister" onclick="switchModal('register')">注册</div>
+    </div>
+    <!-- 登录表单 -->
+    <div id="formLogin">
+      <div class="form-group">
+        <label class="form-label">手机号 / 邮箱</label>
+        <input class="form-input" type="text" placeholder="请输入手机号或邮箱" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">密码</label>
+        <input class="form-input" type="password" placeholder="请输入密码" />
+      </div>
+      <button class="btn-submit" onclick="handleLogin()">登录</button>
+      <div class="modal-divider">或使用以下方式</div>
+      <div class="social-btns">
+        <button class="btn-social" onclick="showToast('微信登录开发中…')">💬 微信</button>
+        <button class="btn-social" onclick="showToast('微博登录开发中…')">📱 微博</button>
+        <button class="btn-social" onclick="showToast('QQ登录开发中…')">🐧 QQ</button>
+      </div>
+    </div>
+    <!-- 注册表单 -->
+    <div id="formRegister" style="display:none">
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label class="form-label">昵称</label>
+          <input class="form-input" type="text" placeholder="你的旅行昵称" />
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">手机号</label>
+          <input class="form-input" type="tel" placeholder="手机号码" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">邮箱</label>
+        <input class="form-input" type="email" placeholder="your@email.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">设置密码</label>
+        <input class="form-input" type="password" placeholder="至少8位，包含字母和数字" />
+      </div>
+      <button class="btn-submit" onclick="handleRegister()">立即注册，开始旅行 ✈</button>
+      <div class="modal-divider">或使用以下方式注册</div>
+      <div class="social-btns">
+        <button class="btn-social" onclick="showToast('微信注册开发中…')">💬 微信</button>
+        <button class="btn-social" onclick="showToast('微博注册开发中…')">📱 微博</button>
+        <button class="btn-social" onclick="showToast('QQ注册开发中…')">🐧 QQ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== MODAL =====
+  function openModal(type) {
+    document.getElementById('modalOverlay').classList.add('active');
+    switchModal(type);
+  }
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('active');
+  }
+  function closeModalOnBg(e) {
+    if (e.target === document.getElementById('modalOverlay')) closeModal();
+  }
+  function switchModal(type) {
+    const isLogin = type === 'login';
+    document.getElementById('formLogin').style.display = isLogin ? 'block' : 'none';
+    document.getElementById('formRegister').style.display = isLogin ? 'none' : 'block';
+    document.getElementById('tabLogin').classList.toggle('active', isLogin);
+    document.getElementById('tabRegister').classList.toggle('active', !isLogin);
+    document.getElementById('modalTitle').textContent = isLogin ? '欢迎回来' : '加入旅行大家庭';
+    document.getElementById('modalSub').textContent = isLogin ? '登录后探索更多旅行内容' : '注册免费，畅享所有功能';
+  }
+  function handleLogin() {
+    closeModal();
+    showToast('✅ 登录成功！欢迎回来');
+  }
+  function handleRegister() {
+    closeModal();
+    showToast('🎉 注册成功！欢迎加入去旅行');
+  }
+
+  // ===== TABS =====
+  function switchTab(btn, type) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const labels = { diary:'日记', guide:'攻略', photo:'美图' };
+    showToast('切换到：' + (labels[type] || type));
+  }
+
+  // ===== FOLLOW =====
+  function toggleFollow(btn) {
+    const isFollowing = btn.classList.contains('following');
+    btn.classList.toggle('following');
+    btn.textContent = isFollowing ? '+ 关注' : '✓ 已关注';
+    showToast(isFollowing ? '已取消关注' : '✅ 关注成功！');
+  }
+
+  // ===== TOAST =====
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // ===== SCROLL ANIMATIONS =====
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+  // ===== ESC close modal =====
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>
