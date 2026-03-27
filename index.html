@@ -1059,7 +1059,9 @@
     `).join('');
 
     // 重新绑定滚动动画
-    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+    if (typeof observer !== 'undefined') {
+      document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+    }
   }
 
   function getColor(type, isSecondary = false) {
@@ -1281,10 +1283,13 @@
   }
 
   // ===== SCROLL ANIMATIONS =====
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
-  }, { threshold: 0.1 });
-  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+  let observer;
+  document.addEventListener('DOMContentLoaded', () => {
+    observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+  });
 
   // ===== ESC close modal =====
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
