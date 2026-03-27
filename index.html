@@ -6,6 +6,8 @@
   <title>去旅行 - 记录每一次出发</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
+  <!-- Supabase Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --primary: #00b4d8;
@@ -911,17 +913,368 @@
 </div>
 
 <script>
+  // ===== SUPABASE CONFIG =====
+  const SUPABASE_URL = 'https://lxbylutfmikyxptphanid.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_My7CsFPjpnPmxi8fE8XeRA_CTU7Au8f';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ===== STATE =====
+  let currentUser = null;
+  let currentTab = 'diary';
+
+  // ===== INIT =====
+  document.addEventListener('DOMContentLoaded', async () => {
+    await checkAuth();
+    await loadPosts();
+    await loadUsers();
+  });
+
+  // ===== AUTH =====
+  async function checkAuth() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      updateNavForUser();
+    }
+  }
+
+  function updateNavForUser() {
+    const navActions = document.querySelector('.nav-actions');
+    if (currentUser) {
+      navActions.innerHTML = `
+        <button class="btn-outline" onclick="handleLogout()">退出</button>
+        <button class="btn-solid" onclick="openModal('admin')">后台管理</button>
+      `;
+    } else {
+      navActions.innerHTML = `
+        <button class="btn-outline" onclick="openModal('login')">登录</button>
+        <button class="btn-solid" onclick="openModal('register')">免费注册</button>
+      `;
+    }
+  }
+
+  async function handleRegister() {
+    const nickname = document.querySelector('#formRegister input[placeholder="你的旅行昵称"]').value;
+    const email = document.querySelector('#formRegister input[type="email"]').value;
+    const password = document.querySelector('#formRegister input[type="password"]').value;
+
+    if (!nickname || !email || !password) {
+      showToast('❌ 请填写完整信息');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { nickname }
+        }
+      });
+
+      if (error) throw error;
+
+      // 创建用户资料
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([{
+          id: data.user.id,
+          nickname,
+          email,
+          created_at: new Date().toISOString()
+        }]);
+
+      if (profileError) {
+        console.warn('Profile creation warning:', profileError);
+      }
+
+      closeModal();
+      showToast('🎉 注册成功！请查收邮箱验证邮件');
+    } catch (err) {
+      showToast('❌ ' + (err.message || '注册失败'));
+    }
+  }
+
+  async function handleLogin() {
+    const email = document.querySelector('#formLogin input[type="text"]').value;
+    const password = document.querySelector('#formLogin input[type="password"]').value;
+
+    if (!email || !password) {
+      showToast('❌ 请填写账号密码');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
+      currentUser = data.user;
+      closeModal();
+      updateNavForUser();
+      showToast('✅ 登录成功！欢迎回来，' + (currentUser.user_metadata.nickname || '旅友'));
+    } catch (err) {
+      showToast('❌ ' + (err.message || '登录失败'));
+    }
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    currentUser = null;
+    updateNavForUser();
+    showToast('👋 已退出登录');
+  }
+
+  // ===== POSTS =====
+  async function loadPosts() {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          profiles:nickname
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      renderPosts(data || []);
+    } catch (err) {
+      console.error('加载文章失败:', err);
+      renderPosts([]); // 显示空状态
+    }
+  }
+
+  function renderPosts(posts) {
+    const grid = document.getElementById('cardsGrid');
+    if (!posts.length) {
+      grid.innerHTML = `
+        <div style="grid-column: 1/-1; text-align: center; padding: 4rem;">
+          <div style="font-size: 3rem; margin-bottom: 1rem;">📝</div>
+          <p style="color: #999; font-size: 1rem;">还没有游记，快来发布第一篇吧！</p>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = posts.map(post => `
+      <div class="diary-card fade-in" onclick="showPostDetail('${post.id}')">
+        <div class="card-img-placeholder" style="--c1:${getColor(post.type)};--c2:${getColor(post.type, true)}">
+          <span>${getEmoji(post.type)}</span>
+          <div class="card-tag">${post.type === 'guide' ? '攻略' : '日记'}</div>
+        </div>
+        <div class="card-body">
+          <div class="card-meta">
+            <div class="card-avatar">${(post.nickname || '旅')[0]}</div>
+            <span class="card-author">${post.nickname || '匿名旅友'}</span>
+            <span class="card-date">${formatDate(post.created_at)}</span>
+          </div>
+          <div class="card-title">${post.title}</div>
+          <div class="card-desc">${post.content.substring(0, 80)}...</div>
+          <div class="card-footer">
+            <span class="card-stat">❤️ ${post.likes || 0}</span>
+            <span class="card-stat">💬 ${post.comments || 0}</span>
+            <span class="card-stat">🔖 ${post.saves || 0}</span>
+            <span class="card-location">📍 ${post.location || '未知'}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    // 重新绑定滚动动画
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+  }
+
+  function getColor(type, isSecondary = false) {
+    const colors = {
+      diary: isSecondary ? '#ffb347' : '#f77f00',
+      guide: isSecondary ? '#00b4d8' : '#0077b6',
+      photo: isSecondary ? '#52b788' : '#1b4332'
+    };
+    return colors[type] || colors.diary;
+  }
+
+  function getEmoji(type) {
+    const emojis = { diary: '🌸', guide: '📋', photo: '📸' };
+    return emojis[type] || '📝';
+  }
+
+  function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}月${day}日`;
+  }
+
+  // ===== USERS =====
+  async function loadUsers() {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(8);
+
+      if (error) throw error;
+      renderUsers(data || []);
+    } catch (err) {
+      console.error('加载用户失败:', err);
+    }
+  }
+
+  function renderUsers(users) {
+    const grid = document.querySelector('.friend-grid');
+    if (!users.length) return;
+
+    grid.innerHTML = users.map(user => `
+      <div class="friend-card fade-in">
+        <div class="friend-avatar" style="--c1:${getRandomColor()};--c2:${getRandomColor(true)}">
+          ${(user.nickname || '旅')[0]}
+          <div class="friend-badge"></div>
+        </div>
+        <div class="friend-name">${user.nickname || '匿名旅友'}</div>
+        <div class="friend-bio">${user.bio || '热爱旅行，在路上…'}</div>
+        <button class="btn-follow" onclick="toggleFollow(this, '${user.id}')">+ 关注</button>
+      </div>
+    `).join('');
+  }
+
+  function getRandomColor(isSecondary = false) {
+    const colors = [
+      ['#f77f00', '#ffb347'],
+      ['#0077b6', '#00b4d8'],
+      ['#1b4332', '#52b788'],
+      ['#6a0572', '#c77dff']
+    ];
+    const pair = colors[Math.floor(Math.random() * colors.length)];
+    return isSecondary ? pair[1] : pair[0];
+  }
+
+  // ===== ADMIN MODAL =====
+  function openAdminModal() {
+    if (!currentUser) {
+      showToast('❌ 请先登录');
+      openModal('login');
+      return;
+    }
+
+    const modal = document.getElementById('modalOverlay');
+    const modalContent = modal.querySelector('.modal');
+
+    modalContent.innerHTML = `
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div class="modal-header">
+        <div class="modal-logo">✈ 后台管理</div>
+        <div class="modal-title">发布游记</div>
+        <div class="modal-sub">分享你的旅行故事</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">标题</label>
+        <input class="form-input" type="text" id="postTitle" placeholder="给你的游记起个标题" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">类型</label>
+        <select class="form-input" id="postType">
+          <option value="diary">📔 旅行日记</option>
+          <option value="guide">📋 旅游攻略</option>
+          <option value="photo">📸 美图集</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">目的地</label>
+        <input class="form-input" type="text" id="postLocation" placeholder="例如：日本·京都" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">内容</label>
+        <textarea class="form-input" id="postContent" rows="8" placeholder="分享你的旅行见闻和故事…"></textarea>
+      </div>
+
+      <button class="btn-submit" onclick="createPost()">发布游记 ✈</button>
+    `;
+
+    modal.classList.add('active');
+  }
+
+  async function createPost() {
+    const title = document.getElementById('postTitle').value;
+    const type = document.getElementById('postType').value;
+    const location = document.getElementById('postLocation').value;
+    const content = document.getElementById('postContent').value;
+
+    if (!title || !content) {
+      showToast('❌ 请填写标题和内容');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .insert([{
+          user_id: currentUser.id,
+          title,
+          type,
+          location: location || '未知',
+          content,
+          created_at: new Date().toISOString(),
+          likes: 0,
+          comments: 0,
+          saves: 0
+        }]);
+
+      if (error) throw error;
+
+      closeModal();
+      showToast('🎉 发布成功！');
+      await loadPosts(); // 重新加载文章列表
+    } catch (err) {
+      showToast('❌ 发布失败：' + (err.message || '未知错误'));
+    }
+  }
+
+  function showPostDetail(postId) {
+    showToast('📖 文章详情功能开发中…');
+  }
+
+  async function toggleFollow(btn, userId) {
+    if (!currentUser) {
+      showToast('❌ 请先登录');
+      openModal('login');
+      return;
+    }
+
+    const isFollowing = btn.classList.contains('following');
+    btn.classList.toggle('following');
+    btn.textContent = isFollowing ? '+ 关注' : '✓ 已关注';
+    showToast(isFollowing ? '已取消关注' : '✅ 关注成功！');
+  }
+
   // ===== MODAL =====
   function openModal(type) {
-    document.getElementById('modalOverlay').classList.add('active');
+    const modal = document.getElementById('modalOverlay');
+
+    if (type === 'admin') {
+      openAdminModal();
+      return;
+    }
+
+    modal.classList.add('active');
     switchModal(type);
   }
+
   function closeModal() {
     document.getElementById('modalOverlay').classList.remove('active');
   }
+
   function closeModalOnBg(e) {
     if (e.target === document.getElementById('modalOverlay')) closeModal();
   }
+
   function switchModal(type) {
     const isLogin = type === 'login';
     document.getElementById('formLogin').style.display = isLogin ? 'block' : 'none';
@@ -931,29 +1284,15 @@
     document.getElementById('modalTitle').textContent = isLogin ? '欢迎回来' : '加入旅行大家庭';
     document.getElementById('modalSub').textContent = isLogin ? '登录后探索更多旅行内容' : '注册免费，畅享所有功能';
   }
-  function handleLogin() {
-    closeModal();
-    showToast('✅ 登录成功！欢迎回来');
-  }
-  function handleRegister() {
-    closeModal();
-    showToast('🎉 注册成功！欢迎加入去旅行');
-  }
 
   // ===== TABS =====
   function switchTab(btn, type) {
+    currentTab = type;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     const labels = { diary:'日记', guide:'攻略', photo:'美图' };
     showToast('切换到：' + (labels[type] || type));
-  }
-
-  // ===== FOLLOW =====
-  function toggleFollow(btn) {
-    const isFollowing = btn.classList.contains('following');
-    btn.classList.toggle('following');
-    btn.textContent = isFollowing ? '+ 关注' : '✓ 已关注';
-    showToast(isFollowing ? '已取消关注' : '✅ 关注成功！');
+    // TODO: 根据 type 过滤文章
   }
 
   // ===== TOAST =====
