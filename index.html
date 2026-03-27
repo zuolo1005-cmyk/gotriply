@@ -691,10 +691,15 @@
   async function initSupabase() {
     try {
       const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+      // 使用 unpkg 替代 jsdelivr
+      script.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
       script.onload = () => {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log('✅ Supabase 加载成功');
+        if (window.supabase && window.supabase.createClient) {
+          supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          console.log('✅ Supabase 加载成功');
+        } else {
+          console.error('❌ Supabase 对象不存在');
+        }
       };
       script.onerror = () => {
         console.error('❌ Supabase 加载失败');
