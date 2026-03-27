@@ -6,8 +6,6 @@
   <title>去旅行 - 记录每一次出发</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
-  <!-- Supabase Client -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --primary: #00b4d8;
@@ -687,7 +685,28 @@
   // ===== SUPABASE CONFIG =====
   const SUPABASE_URL = 'https://lxbylutfmikyxptphanid.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_My7CsFPjpnPmxi8fE8XeRA_CTU7Au8f';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  
+  // 延迟加载 Supabase
+  let supabase = null;
+  async function initSupabase() {
+    try {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+      script.onload = () => {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('✅ Supabase 加载成功');
+      };
+      script.onerror = () => {
+        console.error('❌ Supabase 加载失败');
+      };
+      document.head.appendChild(script);
+    } catch (err) {
+      console.error('Supabase 加载错误:', err);
+    }
+  }
+  
+  // 页面加载时初始化 Supabase
+  initSupabase();
 
   // ===== STATE =====
   let currentUser = null;
@@ -702,6 +721,10 @@
 
   // ===== AUTH =====
   async function checkAuth() {
+    if (!supabase) {
+      console.warn('Supabase 尚未加载，跳过认证检查');
+      return;
+    }
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       currentUser = session.user;
@@ -725,6 +748,11 @@
   }
 
   async function handleRegister() {
+    if (!supabase) {
+      showToast('❌ 系统正在初始化，请稍后再试');
+      return;
+    }
+    
     const nickname = document.getElementById('registerNickname').value;
     const email = document.getElementById('registerEmail').value;
     const password = document.getElementById('registerPassword').value;
@@ -767,6 +795,11 @@
   }
 
   async function handleLogin() {
+    if (!supabase) {
+      showToast('❌ 系统正在初始化，请稍后再试');
+      return;
+    }
+    
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
 
@@ -793,6 +826,10 @@
   }
 
   async function handleLogout() {
+    if (!supabase) {
+      showToast('❌ 系统错误');
+      return;
+    }
     await supabase.auth.signOut();
     currentUser = null;
     updateNavForUser();
@@ -801,6 +838,12 @@
 
   // ===== POSTS =====
   async function loadPosts() {
+    if (!supabase) {
+      console.warn('Supabase 尚未加载，跳过加载文章');
+      renderPosts([]);
+      return;
+    }
+    
     try {
       const { data, error } = await supabase
         .from('posts')
@@ -878,6 +921,11 @@
 
   // ===== USERS =====
   async function loadUsers() {
+    if (!supabase) {
+      console.warn('Supabase 尚未加载，跳过加载用户');
+      return;
+    }
+    
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -970,6 +1018,11 @@
   }
 
   async function createPost() {
+    if (!supabase) {
+      showToast('❌ 系统正在初始化，请稍后再试');
+      return;
+    }
+    
     const title = document.getElementById('postTitle').value;
     const type = document.getElementById('postType').value;
     const location = document.getElementById('postLocation').value;
