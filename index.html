@@ -686,17 +686,22 @@
   const SUPABASE_URL = 'https://lxbylutfmikyxptphanid.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_My7CsFPjpnPmxi8fE8XeRA_CTU7Au8f';
   
+  // 使用不同的变量名避免冲突
+  let sbClient = null;
+  
   // 延迟加载 Supabase
-  let supabase = null;
   async function initSupabase() {
     try {
       const script = document.createElement('script');
-      // 使用 unpkg 替代 jsdelivr
       script.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
       script.onload = () => {
-        if (window.supabase && window.supabase.createClient) {
-          supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-          console.log('✅ Supabase 加载成功');
+        // 使用 window 上的 createSupabaseClient 或直接访问
+        if (typeof createClient !== 'undefined') {
+          sbClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          console.log('✅ Supabase 加载成功 (createClient)');
+        } else if (window.supabase && window.supabase.createClient) {
+          sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          console.log('✅ Supabase 加载成功 (window.supabase)');
         } else {
           console.error('❌ Supabase 对象不存在');
         }
@@ -726,11 +731,11 @@
 
   // ===== AUTH =====
   async function checkAuth() {
-    if (!supabase) {
+    if (!sbClient) {
       console.warn('Supabase 尚未加载，跳过认证检查');
       return;
     }
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await sbClient.auth.getSession();
     if (session) {
       currentUser = session.user;
       updateNavForUser();
@@ -753,7 +758,7 @@
   }
 
   async function handleRegister() {
-    if (!supabase) {
+    if (!sbClient) {
       showToast('❌ 系统正在初始化，请稍后再试');
       return;
     }
@@ -768,7 +773,7 @@
     }
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await sbClient.auth.signUp({
         email,
         password,
         options: {
@@ -779,7 +784,7 @@
       if (error) throw error;
 
       // 创建用户资料
-      const { error: profileError } = await supabase
+      const { error: profileError } = await sbClient
         .from('profiles')
         .insert([{
           id: data.user.id,
@@ -800,7 +805,7 @@
   }
 
   async function handleLogin() {
-    if (!supabase) {
+    if (!sbClient) {
       showToast('❌ 系统正在初始化，请稍后再试');
       return;
     }
@@ -814,7 +819,7 @@
     }
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await sbClient.auth.signInWithPassword({
         email,
         password
       });
@@ -831,11 +836,11 @@
   }
 
   async function handleLogout() {
-    if (!supabase) {
+    if (!sbClient) {
       showToast('❌ 系统错误');
       return;
     }
-    await supabase.auth.signOut();
+    await sbClient.auth.signOut();
     currentUser = null;
     updateNavForUser();
     showToast('👋 已退出登录');
@@ -843,14 +848,14 @@
 
   // ===== POSTS =====
   async function loadPosts() {
-    if (!supabase) {
+    if (!sbClient) {
       console.warn('Supabase 尚未加载，跳过加载文章');
       renderPosts([]);
       return;
     }
     
     try {
-      const { data, error } = await supabase
+      const { data, error } = await sbClient
         .from('posts')
         .select(`
           *,
@@ -926,13 +931,13 @@
 
   // ===== USERS =====
   async function loadUsers() {
-    if (!supabase) {
+    if (!sbClient) {
       console.warn('Supabase 尚未加载，跳过加载用户');
       return;
     }
     
     try {
-      const { data, error } = await supabase
+      const { data, error } = await sbClient
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false })
@@ -1023,7 +1028,7 @@
   }
 
   async function createPost() {
-    if (!supabase) {
+    if (!sbClient) {
       showToast('❌ 系统正在初始化，请稍后再试');
       return;
     }
@@ -1039,7 +1044,7 @@
     }
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await sbClient
         .from('posts')
         .insert([{
           user_id: currentUser.id,
