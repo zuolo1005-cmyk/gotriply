@@ -681,42 +681,47 @@
   </div>
 </div>
 
-<script>
-  // ===== SUPABASE CONFIG =====
-  const SUPABASE_URL = 'https://lxbylutfmikyxptphanid.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_My7CsFPjpnPmxi8fE8XeRA_CTU7Au8f';
+  <!-- Supabase Client - ES Module -->
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    
+    const SUPABASE_URL = 'https://lxbylutfmikyxptphanid.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_My7CsFPjpnPmxi8fE8XeRA_CTU7Au8f';
+    
+    const sbClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // 挂载到 window 供其他函数使用
+    window.sbClient = sbClient;
+    window.supabaseReady = true;
+    console.log('✅ Supabase 加载成功 (ES Module)');
+  </script>
   
-  // 使用不同的变量名避免冲突
+  <script>
+  // 等待 Supabase 模块加载
   let sbClient = null;
   
-  // 延迟加载 Supabase
-  async function initSupabase() {
-    try {
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
-      script.onload = () => {
-        // 使用 window 上的 createSupabaseClient 或直接访问
-        if (typeof createClient !== 'undefined') {
-          sbClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-          console.log('✅ Supabase 加载成功 (createClient)');
-        } else if (window.supabase && window.supabase.createClient) {
-          sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-          console.log('✅ Supabase 加载成功 (window.supabase)');
-        } else {
-          console.error('❌ Supabase 对象不存在');
-        }
-      };
-      script.onerror = () => {
-        console.error('❌ Supabase 加载失败');
-      };
-      document.head.appendChild(script);
-    } catch (err) {
-      console.error('Supabase 加载错误:', err);
-    }
+  function waitForSupabase() {
+    return new Promise((resolve) => {
+      if (window.supabaseReady && window.sbClient) {
+        resolve(window.sbClient);
+      } else {
+        const checkInterval = setInterval(() => {
+          if (window.supabaseReady && window.sbClient) {
+            clearInterval(checkInterval);
+            resolve(window.sbClient);
+          }
+        }, 100);
+      }
+    });
   }
   
-  // 页面加载时初始化 Supabase
-  initSupabase();
+  // 初始化获取客户端
+  async function getSupabaseClient() {
+    if (!sbClient) {
+      sbClient = await waitForSupabase();
+    }
+    return sbClient;
+  }
 
   // ===== STATE =====
   let currentUser = null;
@@ -731,14 +736,15 @@
 
   // ===== AUTH =====
   async function checkAuth() {
-    if (!sbClient) {
-      console.warn('Supabase 尚未加载，跳过认证检查');
-      return;
-    }
-    const { data: { session } } = await sbClient.auth.getSession();
-    if (session) {
-      currentUser = session.user;
-      updateNavForUser();
+    try {
+      const client = await getSupabaseClient();
+      const { data: { session } } = await client.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        updateNavForUser();
+      }
+    } catch (err) {
+      console.error('检查认证失败:', err);
     }
   }
 
@@ -758,10 +764,7 @@
   }
 
   async function handleRegister() {
-    if (!sbClient) {
-      showToast('❌ 系统正在初始化，请稍后再试');
-      return;
-    }
+    const client = await getSupabaseClient();
     
     const nickname = document.getElementById('registerNickname').value;
     const email = document.getElementById('registerEmail').value;
@@ -773,7 +776,7 @@
     }
 
     try {
-      const { data, error } = await sbClient.auth.signUp({
+      const { data, error } = await client.auth.signUp({
         email,
         password,
         options: {
@@ -784,7 +787,7 @@
       if (error) throw error;
 
       // 创建用户资料
-      const { error: profileError } = await sbClient
+      const { error: profileError } = await client
         .from('profiles')
         .insert([{
           id: data.user.id,
@@ -805,10 +808,7 @@
   }
 
   async function handleLogin() {
-    if (!sbClient) {
-      showToast('❌ 系统正在初始化，请稍后再试');
-      return;
-    }
+    const client = await getSupabaseClient();
     
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
@@ -819,7 +819,7 @@
     }
 
     try {
-      const { data, error } = await sbClient.auth.signInWithPassword({
+      const { data, error } = await client.auth.signInWithPassword({
         email,
         password
       });
@@ -836,11 +836,8 @@
   }
 
   async function handleLogout() {
-    if (!sbClient) {
-      showToast('❌ 系统错误');
-      return;
-    }
-    await sbClient.auth.signOut();
+    const client = await getSupabaseClient();
+    await client.auth.signOut();
     currentUser = null;
     updateNavForUser();
     showToast('👋 已退出登录');
@@ -848,14 +845,9 @@
 
   // ===== POSTS =====
   async function loadPosts() {
-    if (!sbClient) {
-      console.warn('Supabase 尚未加载，跳过加载文章');
-      renderPosts([]);
-      return;
-    }
-    
     try {
-      const { data, error } = await sbClient
+      const client = await getSupabaseClient();
+      const { data, error } = await client
         .from('posts')
         .select(`
           *,
@@ -931,13 +923,9 @@
 
   // ===== USERS =====
   async function loadUsers() {
-    if (!sbClient) {
-      console.warn('Supabase 尚未加载，跳过加载用户');
-      return;
-    }
-    
     try {
-      const { data, error } = await sbClient
+      const client = await getSupabaseClient();
+      const { data, error } = await client
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false })
@@ -1028,10 +1016,7 @@
   }
 
   async function createPost() {
-    if (!sbClient) {
-      showToast('❌ 系统正在初始化，请稍后再试');
-      return;
-    }
+    const client = await getSupabaseClient();
     
     const title = document.getElementById('postTitle').value;
     const type = document.getElementById('postType').value;
@@ -1044,7 +1029,7 @@
     }
 
     try {
-      const { data, error } = await sbClient
+      const { data, error } = await client
         .from('posts')
         .insert([{
           user_id: currentUser.id,
